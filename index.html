@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Trujillo Conecta — Tu ciudad, en tus manos</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cpath%20fill='%230d5cab'%20d='M32%202C18.7%202%208%2012.7%208%2026c0%2013.9%2020.6%2033.4%2022.9%2035.5a1.6%201.6%200%200%200%202.2%200C35.4%2059.4%2056%2039.9%2056%2026%2056%2012.7%2045.3%202%2032%202z'/%3E%3Ccircle%20cx='30'%20cy='25'%20r='13'%20fill='white'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/nunito@5.2.5/index.css">
+<style>
+:root{
+  --azul:#0d5cab; --azul-med:#1668b5; --azul-osc:#0d3c78; --azul-claro:#e8f1fb;
+  --verde:#27a351; --naranja:#f28c00; --rojo:#e03131; --morado:#9333ea;
+  --tinta:#12263f; --gris:#5b6b7c; --fondo:#f4f8fd; --blanco:#ffffff;
+  --sombra:0 10px 30px rgba(13,60,120,.12); --radio:18px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Nunito Variable',system-ui,-apple-system,Segoe UI,sans-serif;background:var(--fondo);color:var(--tinta);line-height:1.55}
+body.no-scroll{overflow:hidden}
+img{display:block;max-width:100%}
+button{font-family:inherit}
+.ic{width:1.2em;height:1.2em;flex:none}
+.container{width:min(1180px,100% - 40px);margin-inline:auto}
+.section{padding:72px 0}
+.alt{background:#eef4fb}
+.sec-head{display:grid;gap:6px;margin-bottom:28px}
+.sec-head h2{font-size:clamp(1.6rem,3vw,2.2rem);color:var(--azul-osc);font-weight:900}
+.sec-head p{color:var(--gris);max-width:660px}
+.sec-head .kicker{color:var(--azul);font-weight:900;font-size:12.5px;letter-spacing:1.6px;text-transform:uppercase}
+
+/* ---------- TOPBAR ---------- */
+.topbar{position:sticky;top:0;z-index:900;background:rgba(255,255,255,.93);backdrop-filter:blur(10px);border-bottom:1px solid #e2eaf3}
+.topbar-in{display:flex;align-items:center;justify-content:space-between;gap:14px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand>svg{width:38px;height:38px}
+.brand-txt{display:grid;line-height:1.05}
+.brand-txt strong{font-weight:900;letter-spacing:.6px;font-size:16.5px;color:var(--azul)}
+.brand-txt strong:last-child{color:var(--azul-osc)}
+.nav-desktop{display:flex;gap:2px}
+.nav-desktop a{padding:8px 13px;border-radius:999px;color:var(--tinta);font-weight:800;font-size:14px;text-decoration:none;transition:.2s}
+.nav-desktop a:hover{background:var(--azul-claro);color:var(--azul)}
+.top-actions{display:flex;gap:6px;align-items:center}
+.icon-btn{width:40px;height:40px;border-radius:50%;border:0;background:#eef4fb;color:var(--azul-osc);display:grid;place-items:center;cursor:pointer;position:relative;transition:.2s}
+.icon-btn:hover{background:#dfe9f5}
+.icon-btn .ic{width:20px;height:20px}
+.badge{position:absolute;top:1px;right:1px;min-width:17px;height:17px;border-radius:999px;background:var(--rojo);color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;padding:0 4px;border:2px solid #fff}
+.hamburger{display:none}
+.mobile-menu{display:none;flex-direction:column;gap:4px;padding:10px 16px 16px;background:#fff;border-top:1px solid #e2eaf3}
+.mobile-menu.open{display:flex}
+.mobile-menu a{padding:11px 12px;border-radius:12px;font-weight:800;color:var(--tinta);text-decoration:none}
+.mobile-menu a:hover{background:var(--azul-claro)}
+@media(max-width:980px){.nav-desktop{display:none}.hamburger{display:grid}}
+
+/* panel notificaciones */
+.panel-not{position:absolute;top:calc(100% + 8px);right:14px;width:336px;background:#fff;border:1px solid #dfe9f5;border-radius:16px;box-shadow:var(--sombra);display:none;z-index:960;overflow:hidden}
+.panel-not.open{display:block}
+.pn-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #eef2f7}
+.pn-head b{font-size:14px;color:var(--azul-osc)}
+.pn-head button{background:none;border:0;color:var(--azul);font-weight:900;font-size:12px;cursor:pointer}
+.pn-item{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid #f2f6fa;align-items:flex-start;transition:.2s}
+.pn-item:last-child{border-bottom:0}
+.pn-item.read{opacity:.5}
+.pn-ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;flex:0 0 34px}
+.pn-ic .ic{width:17px;height:17px}
+.pn-item b{font-size:13px;display:block}
+.pn-item p{font-size:12px;color:var(--gris);margin:2px 0}
+.pn-item small{font-size:11px;color:#98a6b6;font-weight:700}
+.bg-azul{background:var(--azul)}.bg-verde{background:var(--verde)}.bg-naranja{background:var(--naranja)}.bg-rojo{background:var(--rojo)}.bg-morado{background:var(--morado)}
+@media(max-width:768px){.panel-not{position:fixed;left:14px;right:14px;top:72px;width:auto}}
+
+/* ---------- HERO ---------- */
+.hero{background:linear-gradient(180deg,#e8f1fb 0%,#f4f8fd 100%);padding:56px 0 66px;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:44px;align-items:center}
+.pill{display:inline-flex;gap:8px;align-items:center;background:#fff;border:1.5px solid #cfe0f4;color:var(--azul);font-weight:900;font-size:13px;padding:8px 15px;border-radius:999px}
+.pill .ic{width:15px;height:15px}
+.hero h1{font-size:clamp(2.4rem,5vw,3.6rem);line-height:1.04;color:var(--azul-osc);font-weight:900;margin:16px 0 12px}
+.hero h1 span{color:var(--azul)}
+.lead{font-size:clamp(1rem,1.4vw,1.13rem);color:var(--gris);max-width:540px}
+.feat-row{display:flex;gap:12px;flex-wrap:wrap;margin:26px 0 28px}
+.feat{display:grid;justify-items:center;gap:8px;width:98px}
+.feat .circle{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;color:#fff;box-shadow:0 10px 20px rgba(13,60,120,.22);transition:.25s}
+.feat:hover .circle{transform:translateY(-4px) scale(1.05)}
+.feat .circle .ic{width:30px;height:30px}
+.feat label{font-size:12.5px;font-weight:800;color:var(--azul-osc);text-align:center}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;font-weight:900;border-radius:999px;padding:13px 24px;border:0;cursor:pointer;font-size:15px;transition:.2s;text-decoration:none}
+.btn .ic{width:17px;height:17px}
+.btn-primary{background:linear-gradient(135deg,var(--azul-med),var(--azul));color:#fff;box-shadow:0 8px 20px rgba(13,92,171,.35)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(13,92,171,.45)}
+.btn-ghost{background:#fff;color:var(--azul);border:2px solid #d6e4f5}
+.btn-ghost:hover{border-color:var(--azul);transform:translateY(-2px)}
+.btn-sm{padding:9px 16px;font-size:13px}
+.btn-block{width:100%;justify-content:center}
+.hero-phone{display:grid;place-items:center}
+
+/* phone mockup */
+.phone{width:302px;border:10px solid #101418;border-radius:44px;overflow:hidden;box-shadow:0 30px 60px rgba(13,60,120,.28);background:#fff;position:relative}
+.phone-screen{height:620px;display:flex;flex-direction:column;background:#fff;padding-top:34px;position:relative}
+.status{position:absolute;top:0;left:0;right:0;height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;color:#fff;font-size:12px;font-weight:800;z-index:650;background:linear-gradient(135deg,var(--azul-osc),var(--azul-med))}
+.status .st-ic{display:flex;gap:5px;align-items:center}
+.status .ic{width:14px;height:14px}
+.notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:104px;height:18px;background:#101418;border-radius:999px;z-index:660}
+.app-header{background:linear-gradient(135deg,var(--azul-osc),var(--azul-med));color:#fff;padding:12px 14px 12px;display:flex;align-items:center;gap:9px}
+.app-header>svg{width:30px;height:30px}
+.app-header .bh{display:grid;line-height:1.05}
+.app-header .bh strong{font-size:13px;letter-spacing:.5px}
+.app-header .ah-ic{margin-left:auto;display:flex;gap:8px;color:#fff}
+.app-header .ah-ic .ic{width:19px;height:19px}
+.app-search{margin:10px 12px 8px;display:flex;align-items:center;gap:8px;background:#edf1f6;border:0;border-radius:12px;padding:10px 12px;color:#8a97a6;font-size:12.5px;font-weight:700;cursor:pointer;width:auto;text-align:left}
+.app-search .ic{width:15px;height:15px}
+.mini-wrap{position:relative;flex:1;min-height:0;background:#eaf2fb}
+#miniMap{position:absolute;inset:0;z-index:1}
+.app-legend{position:absolute;left:10px;bottom:10px;background:#fff;border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,.18);padding:9px 11px;display:grid;gap:6px;z-index:500}
+.al-row{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:800;color:var(--tinta)}
+.al-ic{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;color:#fff;flex:none}
+.al-ic .ic{width:10px;height:10px}
+.al-line{width:18px;border-top:3px dashed var(--verde);flex:none}
+.app-chip{position:absolute;z-index:500;background:#fff;border-radius:999px;box-shadow:0 6px 16px rgba(0,0,0,.18);padding:6px 11px;display:flex;gap:7px;align-items:center;font-size:10.5px;font-weight:900;color:var(--azul-osc);pointer-events:none}
+.app-chip small{display:block;font-size:9px;color:var(--gris);font-weight:700}
+.chip-blue{top:10px;left:10px}
+.chip-orange{top:40%;right:8px;color:#8a5300}
+.app-nav{display:flex;background:#fff;border-top:1px solid #e5ecf5;padding:8px 4px}
+.an-item{flex:1;display:grid;justify-items:center;gap:2px;border:0;background:none;color:var(--gris);font-size:10.5px;font-weight:900;cursor:pointer}
+.an-item .ic{width:20px;height:20px}
+.an-item.active{color:var(--azul)}
+@media(max-width:980px){.hero-grid{grid-template-columns:1fr;gap:36px}.hero-phone{order:2}}
+@media(max-width:400px){.phone{width:272px}.phone-screen{height:560px}}
+
+/* ---------- MAPA ---------- */
+.search-row{position:relative;max-width:580px;z-index:820}
+.search-ic{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--gris);pointer-events:none}
+.search-ic .ic{width:18px;height:18px}
+#buscar{width:100%;padding:14px 18px 14px 46px;border-radius:999px;border:1.5px solid #dfe9f5;background:#fff;font:inherit;font-weight:700;color:var(--tinta);outline:none;transition:.2s;box-shadow:0 4px 14px rgba(13,60,120,.07)}
+#buscar:focus{border-color:var(--azul);box-shadow:0 4px 18px rgba(13,92,171,.18)}
+#buscar::placeholder{color:#9aa8b8;font-weight:600}
+.sugerencias{position:absolute;top:calc(100% + 8px);left:0;right:0;background:#fff;border:1px solid #dfe9f5;border-radius:16px;box-shadow:var(--sombra);overflow:hidden;display:none;z-index:830}
+.sugerencias.open{display:block}
+.sug-item{display:flex;gap:11px;align-items:center;width:100%;padding:11px 14px;background:none;border:0;cursor:pointer;text-align:left}
+.sug-item:hover{background:var(--azul-claro)}
+.sug-ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;flex:none}
+.sug-ic .ic{width:14px;height:14px}
+.sug-item strong{display:block;font-size:13.5px;color:var(--tinta)}
+.sug-item small{font-size:11.5px;color:var(--gris);font-weight:700}
+.map-wrap{margin-top:20px;border-radius:22px;overflow:hidden;border:1px solid #dfe9f5;box-shadow:var(--sombra);position:relative;z-index:1;background:#eaf2fb}
+#map{height:560px;width:100%;background:#eaf2fb}
+.map-hint{margin-top:12px;font-size:13px;color:var(--gris);display:flex;gap:8px;align-items:center}
+.map-hint .ic{width:15px;height:15px;color:var(--azul)}
+.map-fallback{display:grid;place-items:center;height:100%;padding:24px;color:var(--gris);font-weight:800;text-align:center}
+@media(max-width:768px){#map{height:440px}}
+
+/* marcadores leaflet */
+.tc-mk .mk{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.3);transition:.15s}
+.tc-mk .mk:hover{transform:scale(1.12)}
+.tc-mk .mk .svgmk{width:17px;height:17px;fill:currentColor}
+.mk-blue{background:var(--azul-med);color:#fff}
+.mk-orange{background:var(--naranja);color:#fff}
+.mk-red{background:var(--rojo);color:#fff}
+.mk-purple{background:var(--morado);color:#fff}
+.mk-green{background:var(--verde);color:#fff}
+.leaflet-popup-content-wrapper{border-radius:14px;box-shadow:0 10px 26px rgba(13,60,120,.25)}
+.leaflet-popup-content{margin:12px 14px;font-family:inherit}
+.pop{display:grid;gap:2px;min-width:168px}
+.pop b{font-size:13.5px;color:var(--azul-osc)}
+.pop-sub{font-size:11.5px;color:var(--gris);font-weight:700}
+.btn-mini{margin-top:7px;padding:7px 13px;font-size:12px;background:var(--azul);color:#fff;border-radius:999px;border:0;cursor:pointer;font-weight:900;justify-self:start}
+.btn-mini:hover{background:var(--azul-osc)}
+/* leyenda */
+.leyenda{background:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(13,60,120,.2);padding:10px 13px;min-width:196px}
+.ley-title{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:900;font-size:12.5px;color:var(--azul-osc);cursor:pointer;user-select:none}
+.ley-title .ic{width:14px;height:14px;transition:.2s}
+.leyenda.closed .ley-title .ic{transform:rotate(-90deg)}
+.leyenda ul{list-style:none;margin:9px 0 0;display:grid;gap:7px}
+.leyenda.closed ul{display:none}
+.leyenda label{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--tinta);cursor:pointer}
+.leyenda input{accent-color:var(--azul);width:15px;height:15px;cursor:pointer}
+.ley-ic{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff;flex:none}
+.ley-ic .ic{width:12px;height:12px}
+.ley-line{width:22px;flex:none;border-top:3px dashed var(--verde)}
+
+/* ---------- OBRAS ---------- */
+.grid-obras{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+.card-obra{background:#fff;border-radius:20px;overflow:hidden;box-shadow:var(--sombra);border:1px solid #e2ecf7;display:flex;flex-direction:column;transition:.25s}
+.card-obra:hover{transform:translateY(-5px);box-shadow:0 18px 40px rgba(13,60,120,.18)}
+.co-img{position:relative}
+.co-img img{width:100%;height:172px;object-fit:cover}
+.badge-estado{position:absolute;top:12px;left:12px;display:inline-flex;align-items:center;gap:7px;background:#fff;color:#c46a00;font-weight:900;font-size:11.5px;padding:6px 12px;border-radius:999px;box-shadow:0 4px 10px rgba(0,0,0,.15)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--naranja);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.55}}
+.co-body{padding:17px 18px 20px;display:grid;gap:10px;align-content:start}
+.co-body h3{font-size:17px;color:var(--azul-osc);font-weight:900;line-height:1.25}
+.co-ub,.co-fechas{display:flex;gap:8px;align-items:flex-start;color:var(--gris);font-size:13px;font-weight:700}
+.co-ub .ic,.co-fechas .ic{width:15px;height:15px;margin-top:2px;color:var(--azul)}
+.av-flex{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.bar{height:10px;background:#e6eef7;border-radius:999px;overflow:hidden;flex:1}
+.fill{height:100%;background:linear-gradient(90deg,var(--verde),#4cc366);border-radius:999px;width:0;transition:width 1.1s cubic-bezier(.2,.7,.3,1)}
+.pct{font-weight:900;color:var(--azul-osc);font-size:14px}
+.co-btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+
+/* ---------- CARACTERÍSTICAS ---------- */
+.grid-car{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.card-car{background:#fff;border-radius:16px;padding:19px;display:flex;gap:14px;align-items:flex-start;border:1.5px solid var(--bcol,#dfe9f5);box-shadow:0 6px 18px rgba(13,60,120,.08);transition:.22s}
+.card-car:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(13,60,120,.14)}
+.card-car .cic{flex:0 0 46px;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff}
+.card-car .cic .ic{width:22px;height:22px}
+.card-car h3{font-size:15.5px;color:var(--azul-osc);font-weight:900;margin-bottom:4px}
+.card-car p{font-size:13.5px;color:var(--gris);font-weight:600}
+.c-orange{--bcol:#ffd9a1}.c-verde{--bcol:#bfe6c9}.c-azul{--bcol:#bcd8f2}.c-morado{--bcol:#e2c8f5}.c-rojo{--bcol:#f5c1c1}
+
+/* ---------- REPORTES ---------- */
+.rep-grid{display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:start}
+.rep-info h2{font-size:clamp(1.6rem,3vw,2.1rem);color:var(--azul-osc);font-weight:900;margin-bottom:10px}
+.rep-info p{color:var(--gris);font-weight:600;margin-bottom:20px}
+.rep-list{display:grid;gap:12px;margin-bottom:24px}
+.rep-item{display:flex;gap:11px;align-items:center;font-weight:800;font-size:14px;color:var(--tinta)}
+.rep-item .ric{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;flex:none}
+.rep-item .ric .ic{width:17px;height:17px}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.stat{background:#fff;border-radius:16px;padding:16px 10px;text-align:center;box-shadow:var(--sombra)}
+.stat b{font-size:27px;color:var(--azul);font-weight:900;display:block;line-height:1.1}
+.stat small{color:var(--gris);font-weight:800;font-size:11.5px}
+.form-card{background:#fff;border-radius:20px;padding:24px;box-shadow:var(--sombra);display:grid;gap:15px}
+.form-card label{font-size:13px;font-weight:900;color:var(--azul-osc);display:grid;gap:6px}
+.form-card input,.form-card select,.form-card textarea{width:100%;padding:11px 14px;border-radius:12px;border:1.5px solid #dfe9f5;font:inherit;font-weight:700;color:var(--tinta);background:#fbfdff;outline:none;transition:.2s}
+.form-card input:focus,.form-card select:focus,.form-card textarea:focus{border-color:var(--azul);box-shadow:0 0 0 4px rgba(13,92,171,.12)}
+.form-card textarea{resize:vertical;min-height:96px}
+.form-note{font-size:12px;color:var(--gris);font-weight:700;display:flex;gap:7px;align-items:center}
+.form-note .ic{width:14px;height:14px;color:var(--verde)}
+@media(max-width:900px){.rep-grid{grid-template-columns:1fr}}
+
+/* ---------- FOOTER ---------- */
+.footer{background:var(--azul-osc);color:#d7e7fa;padding:48px 0 96px}
+.ft-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:34px}
+.ft-brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.ft-brand>svg{width:40px;height:40px}
+.ft-brand strong{font-size:18px;font-weight:900;color:#fff;display:grid;line-height:1.1}
+.footer p{font-size:13.5px;font-weight:600;max-width:340px}
+.footer h4{color:#fff;font-size:14px;font-weight:900;margin-bottom:12px;letter-spacing:.6px;text-transform:uppercase}
+.ft-links{list-style:none;display:grid;gap:8px}
+.ft-links a{color:#9cc4ec;text-decoration:none;font-weight:800;font-size:13.5px}
+.ft-links a:hover{color:#fff}
+.ft-bottom{border-top:1px solid rgba(255,255,255,.16);margin-top:34px;padding-top:18px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12.5px;font-weight:700;color:#8fb6de}
+@media(max-width:820px){.ft-grid{grid-template-columns:1fr}}
+
+/* ---------- BOTTOM NAV móvil ---------- */
+.bottomnav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e2eaf3;display:none;z-index:950;padding:6px 4px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(13,60,120,.1)}
+.bn-item{flex:1;display:grid;justify-items:center;gap:2px;padding:6px 0;border:0;background:none;color:var(--gris);font-size:11px;font-weight:900;cursor:pointer}
+.bn-item .ic{width:22px;height:22px}
+.bn-item.active{color:var(--azul)}
+@media(max-width:768px){.bottomnav{display:flex}.footer{padding-bottom:110px}#toast{bottom:86px!important}}
+
+/* ---------- MODALES ---------- */
+.overlay{position:fixed;inset:0;background:rgba(9,20,35,.58);display:none;align-items:center;justify-content:center;z-index:1000;padding:18px;backdrop-filter:blur(3px)}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:22px;max-width:470px;width:100%;max-height:88vh;overflow:auto;position:relative;box-shadow:0 30px 70px rgba(0,0,0,.4)}
+.m-hero{position:relative}
+.m-hero img{width:100%;height:192px;object-fit:cover}
+.m-close{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.94);border:0;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.m-close .ic{width:16px;height:16px}
+.m-body{padding:20px 20px 24px;display:grid;gap:6px}
+.m-body h3{font-size:20px;color:var(--azul-osc);font-weight:900;line-height:1.25;margin-top:8px}
+.fila{display:flex;gap:12px;padding:12px 0;border-bottom:1px dashed #e2eaf3;align-items:flex-start}
+.fila:last-of-type{border-bottom:0}
+.fic{width:36px;height:36px;border-radius:10px;background:var(--azul-claro);color:var(--azul);display:grid;place-items:center;flex:0 0 36px}
+.fic .ic{width:18px;height:18px}
+.fic.f-verde{background:#e2f4e7;color:var(--verde)}
+.fic.f-naranja{background:#fff1de;color:var(--naranja)}
+.fic.f-morado{background:#f3e6fb;color:var(--morado)}
+.fila b{font-size:13px;color:var(--azul-osc);display:block}
+.fila p{font-size:13.5px;color:var(--gris);font-weight:700;margin:2px 0 0}
+.av-flex .pct{min-width:42px;text-align:right}
+.m-gal h4{font-size:13px;color:var(--azul-osc);font-weight:900;margin:6px 0 2px}
+.thumbs{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+.thumb{width:88px;height:64px;object-fit:cover;border-radius:10px;cursor:pointer;border:2.5px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.18);transition:.2s}
+.thumb:hover{transform:translateY(-3px) scale(1.04)}
+/* perfil modal */
+.perfil-head{display:grid;justify-items:center;gap:6px;padding:30px 20px 8px;text-align:center}
+.avatar{width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,var(--azul-med),var(--morado));color:#fff;display:grid;place-items:center;font-size:30px;font-weight:900;box-shadow:0 10px 24px rgba(13,92,171,.35)}
+.perfil-head b{font-size:18px;color:var(--azul-osc);font-weight:900}
+.perfil-head span{color:var(--gris);font-weight:700;font-size:13px}
+.perfil-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 20px}
+.perfil-stats div{background:var(--azul-claro);border-radius:14px;padding:12px 6px;text-align:center}
+.perfil-stats b{display:block;color:var(--azul);font-size:20px;font-weight:900}
+.perfil-stats small{font-size:11px;color:var(--gris);font-weight:800}
+.m-body .btn-block{margin-top:8px}
+/* lightbox */
+#ovLight{gap:16px}
+#ovLight figure{margin:0;display:grid;justify-items:center;gap:12px}
+#lbImg{max-width:min(86vw,880px);max-height:72vh;border-radius:16px;box-shadow:0 30px 70px rgba(0,0,0,.5);object-fit:contain;background:#fff}
+#lbCap{color:#fff;font-weight:800;font-size:13.5px;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+.lb-btn{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.94);border:0;display:grid;place-items:center;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.3);flex:none}
+.lb-btn .ic{width:20px;height:20px}
+.lb-close{position:absolute;top:16px;right:16px}
+@media(max-width:640px){#ovLight{flex-direction:column}.lb-nav{display:flex;gap:14px}}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);opacity:0;background:var(--azul-osc);color:#fff;padding:12px 22px;border-radius:999px;font-weight:800;font-size:14px;box-shadow:0 10px 26px rgba(0,0,0,.32);z-index:1200;pointer-events:none;transition:.3s;max-width:calc(100vw - 40px);text-align:center}
+#toast.show{transform:translate(-50%,0);opacity:1}
+
+/* reveal */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<!-- ============ SÍMBOLOS SVG ============ -->
+<svg style="display:none" aria-hidden="true">
+  <symbol id="lg-pin" viewBox="0 0 64 64">
+    <path fill="#0d5cab" d="M32 2C18.7 2 8 12.7 8 26c0 13.9 20.6 33.4 22.9 35.5a1.6 1.6 0 0 0 2.2 0C35.4 59.4 56 39.9 56 26 56 12.7 45.3 2 32 2z"/>
+    <circle cx="30" cy="24" r="15" fill="#fff"/>
+    <g fill="#0d5cab">
+      <path d="M22 29v-6l3-3 3 3v6z"/><path d="M29 29V15l3-3 3 3v14z"/><path d="M36 29v-6l3-3 3 3v6z"/>
+      <rect x="20" y="29" width="22" height="3.4" rx="1.7"/>
+    </g>
+    <path fill="#fff" d="M16 45c8-6 24-8 32-4l-4 6c-8-3-18-2-24 2z"/>
+  </symbol>
+  <symbol id="ic-bus" viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a3 3 0 0 1 3 3v9a3 3 0 0 1-2 2.83V19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-1h-4v1a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-1.17A3 3 0 0 1 3 15V6a3 3 0 0 1 3-3zm0 4v5h12V7H6zm1.5 9a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm9 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></symbol>
+  <symbol id="ic-road" viewBox="0 0 24 24" fill="currentColor"><path d="M4 3h4.4L6.6 21H3L4 3zm11.6 0H20l1 18h-3.6L15.6 3zM11 3h2v4h-2V3zm0 6h2v4h-2V9zm0 6h2v4h-2v-4z"/></symbol>
+  <symbol id="ic-helmet" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5c.6 0 1 .45 1 1v.9A6.5 6.5 0 0 1 18.5 12v1H19a1 1 0 0 1 1 1v1.5H4V14a1 1 0 0 1 1-1h.5v-1A6.5 6.5 0 0 1 11 6.4v-.9c0-.55.4-1 1-1zM4 17.5h16a1 1 0 0 1 0 2.5H4a1.25 1.25 0 0 1 0-2.5z"/></symbol>
+  <symbol id="ic-clip" viewBox="0 0 24 24" fill="currentColor"><path d="M9 2h6a1 1 0 0 1 1 1v1h3a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3V3a1 1 0 0 1 1-1zm1 3v1h4V5h-4zm4.6 6.1-3.6 3.6-1.6-1.6-1.4 1.4 3 3 5-5-1.4-1.4z"/></symbol>
+  <symbol id="ic-warn" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6 22.6 21H1.4L12 2.6zm1 13.2h-2v2.3h2v-2.3zm0-7h-2v5.2h2V8.8z"/></symbol>
+  <symbol id="ic-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="ic-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></symbol>
+  <symbol id="ic-trend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></symbol>
+  <symbol id="ic-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="ic-route" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M12 19h4.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H12"/></symbol>
+  <symbol id="ic-cam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="14" r="3.5"/></symbol>
+  <symbol id="ic-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></symbol>
+  <symbol id="ic-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 19a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="ic-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+  <symbol id="ic-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></symbol>
+  <symbol id="ic-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="ic-chevL" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="ic-chevR" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="ic-chevD" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="ic-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h13l-2.5 4L18 12H5"/></symbol>
+  <symbol id="ic-sig" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h3v-4H3v4zm5 0h3v-8H8v8zm5 0h3V6h-3v12zm5 0h3V2h-3v16z"/></symbol>
+  <symbol id="ic-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10a11 11 0 0 1 16 0"/><path d="M7 13a7 7 0 0 1 10 0"/><path d="M10 16a3.5 3.5 0 0 1 4 0"/><circle cx="12" cy="18.5" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-batt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="8" width="17" height="8" rx="2"/><path d="M22 10v4" stroke-linecap="round"/><rect x="4.5" y="10.5" width="10" height="3" fill="currentColor" stroke="none"/></symbol>
+</svg>
+
+<!-- ============ TOPBAR ============ -->
+<header class="topbar">
+  <div class="container topbar-in">
+    <a class="brand" href="#inicio" aria-label="Trujillo Conecta — inicio">
+      <svg viewBox="0 0 64 64"><use href="#lg-pin"/></svg>
+      <span class="brand-txt"><strong>TRUJILLO</strong><strong>CONECTA</strong></span>
+    </a>
+    <nav class="nav-desktop" aria-label="Navegación principal">
+      <a href="#inicio">Inicio</a>
+      <a href="#mapa">Mapa</a>
+      <a href="#obras">Obras públicas</a>
+      <a href="#caracteristicas">Funciones</a>
+      <a href="#reportes">Reportes</a>
+    </nav>
+    <div class="top-actions">
+      <button class="icon-btn" id="btnNot" aria-label="Notificaciones">
+        <svg class="ic"><use href="#ic-bell"/></svg><span class="badge" id="badgeNot">3</span>
+      </button>
+      <button class="icon-btn" id="btnPerfilTop" aria-label="Mi perfil"><svg class="ic"><use href="#ic-user"/></svg></button>
+      <button class="icon-btn hamburger" id="btnMenu" aria-label="Abrir menú"><svg class="ic"><use href="#ic-menu"/></svg></button>
+    </div>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#inicio">Inicio</a><a href="#mapa">Mapa</a><a href="#obras">Obras públicas</a>
+    <a href="#caracteristicas">Funciones</a><a href="#reportes">Reportes</a>
+  </div>
+  <div class="panel-not" id="panelNot" role="dialog" aria-label="Notificaciones">
+    <div class="pn-head"><b>Notificaciones</b><button id="btnLeerNot" type="button">Marcar leídas</button></div>
+    <div id="notList"></div>
+  </div>
+</header>
+
+<main>
+<!-- ============ HERO ============ -->
+<section class="hero" id="inicio">
+  <div class="container hero-grid">
+    <div class="hero-txt reveal in">
+      <span class="pill"><svg class="ic"><use href="#ic-pin"/></svg>Tu ciudad, en tus manos</span>
+      <h1>Trujillo <span>Conecta</span></h1>
+      <p class="lead">Una sola plataforma, múltiples soluciones: paraderos oficiales, tráfico y rutas, obras públicas con avance en tiempo real y reportes ciudadanos con fiscalización.</p>
+      <div class="feat-row">
+        <div class="feat"><span class="circle bg-azul"><svg class="ic"><use href="#ic-bus"/></svg></span><label>Paraderos y transporte</label></div>
+        <div class="feat"><span class="circle bg-verde"><svg class="ic"><use href="#ic-road"/></svg></span><label>Tráfico y rutas</label></div>
+        <div class="feat"><span class="circle bg-naranja"><svg class="ic"><use href="#ic-helmet"/></svg></span><label>Obras públicas</label></div>
+        <div class="feat"><span class="circle bg-verde"><svg class="ic"><use href="#ic-clip"/></svg></span><label>Reportes y fiscalización</label></div>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#mapa"><svg class="ic"><use href="#ic-map"/></svg>Explorar el mapa</a>
+        <a class="btn btn-ghost" href="#obras"><svg class="ic"><use href="#ic-helmet"/></svg>Ver obras públicas</a>
+      </div>
+    </div>
+
+    <div class="hero-phone reveal in">
+      <div class="phone" aria-label="Vista previa de la app Trujillo Conecta">
+        <div class="phone-screen">
+          <div class="notch"></div>
+          <div class="status"><span>9:41</span><span class="st-ic"><svg class="ic"><use href="#ic-sig"/></svg><svg class="ic"><use href="#ic-wifi"/></svg><svg class="ic"><use href="#ic-batt"/></svg></span></div>
+          <div class="app-header">
+            <svg viewBox="0 0 64 64"><use href="#lg-pin"/></svg>
+            <span class="bh"><strong>TRUJILLO</strong><strong>CONECTA</strong></span>
+            <span class="ah-ic"><svg class="ic"><use href="#ic-bell"/></svg><svg class="ic"><use href="#ic-menu"/></svg></span>
+          </div>
+          <button class="app-search" id="appSearchBtn" type="button"><svg class="ic"><use href="#ic-search"/></svg>Buscar rutas, obras, paraderos…</button>
+          <div class="mini-wrap">
+            <div id="miniMap"></div>
+            <div class="app-chip chip-blue"><span class="al-ic bg-azul"><svg class="ic"><use href="#ic-bus"/></svg></span>Paraderos oficiales</div>
+            <div class="app-chip chip-orange"><span class="al-ic bg-naranja"><svg class="ic"><use href="#ic-helmet"/></svg></span><span>Av. América<small>Obra en ejecución</small></span></div>
+            <div class="app-legend">
+              <span class="al-row"><span class="al-ic bg-azul"><svg class="ic"><use href="#ic-bus"/></svg></span>Paraderos oficiales</span>
+              <span class="al-row"><span class="al-ic bg-naranja"><svg class="ic"><use href="#ic-helmet"/></svg></span>Obras en ejecución</span>
+              <span class="al-row"><span class="al-ic bg-rojo"><svg class="ic"><use href="#ic-warn"/></svg></span>Vías cerradas</span>
+              <span class="al-row"><span class="al-line"></span>Rutas alternativas</span>
+            </div>
+          </div>
+          <div class="app-nav">
+            <button class="an-item active" data-nav="inicio" type="button"><svg class="ic"><use href="#ic-home"/></svg>Inicio</button>
+            <button class="an-item" data-nav="mapa" type="button"><svg class="ic"><use href="#ic-map"/></svg>Mapa</button>
+            <button class="an-item" data-nav="notificaciones" type="button"><svg class="ic"><use href="#ic-bell"/></svg>Notificaciones</button>
+            <button class="an-item" data-nav="perfil" type="button"><svg class="ic"><use href="#ic-user"/></svg>Perfil</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MAPA ============ -->
+<section class="section" id="mapa">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="kicker">Tráfico y rutas</span>
+      <h2>Mapa interactivo de Trujillo</h2>
+      <p>Busca paraderos oficiales, obras en ejecución, vías cerradas y rutas alternativas. Activa o desactiva capas desde la leyenda y toca cualquier marcador para ver su detalle.</p>
+    </div>
+    <div class="search-row reveal">
+      <span class="search-ic"><svg class="ic"><use href="#ic-search"/></svg></span>
+      <input id="buscar" type="text" autocomplete="off" placeholder="Buscar rutas, obras, paraderos…" aria-label="Buscar en el mapa">
+      <div class="sugerencias" id="sugerencias"></div>
+    </div>
+    <div class="map-wrap reveal"><div id="map" role="application" aria-label="Mapa interactivo de Trujillo"></div></div>
+    <p class="map-hint"><svg class="ic"><use href="#ic-pin"/></svg>Consejo: usa la leyenda (abajo a la izquierda del mapa) para mostrar u ocultar capas, y haz zoom con los botones + / −.</p>
+  </div>
+</section>
+
+<!-- ============ OBRAS ============ -->
+<section class="section alt" id="obras">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="kicker">Obras públicas</span>
+      <h2>Obras en ejecución hoy</h2>
+      <p>Ubicación, fechas, estado de avance en tiempo real, ruta alternativa habilitada y evidencia fotográfica de cada obra.</p>
+    </div>
+    <div class="grid-obras" id="gridObras"></div>
+  </div>
+</section>
+
+<!-- ============ CARACTERÍSTICAS ============ -->
+<section class="section" id="caracteristicas">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="kicker">Funciones</span>
+      <h2>Todo lo que la app hace por ti</h2>
+      <p>Información clara y verificada para que planifiques tu ruta y supervises las obras de tu ciudad.</p>
+    </div>
+    <div class="grid-car">
+      <article class="card-car c-orange reveal"><span class="cic bg-naranja"><svg class="ic"><use href="#ic-helmet"/></svg></span><div><h3>Información de la obra</h3><p>Ubicación, fechas, estado y tiempo estimado de cada proyecto público.</p></div></article>
+      <article class="card-car c-verde reveal"><span class="cic bg-verde"><svg class="ic"><use href="#ic-trend"/></svg></span><div><h3>Indicador de avance</h3><p>Muestra el progreso de la obra en tiempo real con un indicador visual.</p></div></article>
+      <article class="card-car c-azul reveal"><span class="cic bg-azul"><svg class="ic"><use href="#ic-route"/></svg></span><div><h3>Rutas alternativas</h3><p>Conoce las vías habilitadas mientras dure la obra, directo en el mapa.</p></div></article>
+      <article class="card-car c-morado reveal"><span class="cic bg-morado"><svg class="ic"><use href="#ic-cam"/></svg></span><div><h3>Galería de fotos</h3><p>Visualiza el avance de la obra con evidencia fotográfica verificada.</p></div></article>
+      <article class="card-car c-azul reveal"><span class="cic bg-azul"><svg class="ic"><use href="#ic-map"/></svg></span><div><h3>Mapa interactivo</h3><p>Ubica la obra y la ruta alternativa en el mapa interactivo de Trujillo.</p></div></article>
+      <article class="card-car c-rojo reveal"><span class="cic bg-rojo"><svg class="ic"><use href="#ic-clip"/></svg></span><div><h3>Reportes y fiscalización</h3><p>Envía incidencias de tu barrio y haz seguimiento a su atención.</p></div></article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ REPORTES ============ -->
+<section class="section alt" id="reportes">
+  <div class="container rep-grid">
+    <div class="rep-info reveal">
+      <span class="kicker" style="color:var(--azul);font-weight:900;font-size:12.5px;letter-spacing:1.6px;text-transform:uppercase">Reportes y fiscalización</span>
+      <h2>Tu reporte se convierte en un marcador del mapa</h2>
+      <p>¿Un bache, un semáforo malogrado o una vereda rota? Envía tu reporte: quedará geolocalizado en el mapa interactivo para que la municipalidad y los vecinos hagan seguimiento.</p>
+      <div class="rep-list">
+        <span class="rep-item"><span class="ric bg-azul"><svg class="ic"><use href="#ic-pin"/></svg></span>Geolocalizado por zona o avenida</span>
+        <span class="rep-item"><span class="ric bg-naranja"><svg class="ic"><use href="#ic-clock"/></svg></span>Seguimiento de estado en tiempo real</span>
+        <span class="rep-item"><span class="ric bg-verde"><svg class="ic"><use href="#ic-clip"/></svg></span>Evidencia y fiscalización ciudadana</span>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><b data-count="128" data-suffix="">0</b><small>Reportes atendidos</small></div>
+        <div class="stat"><b data-count="42" data-suffix="">0</b><small>En seguimiento</small></div>
+        <div class="stat"><b data-count="96" data-suffix="%">0</b><small>Satisfacción</small></div>
+      </div>
+    </div>
+    <form class="form-card reveal" id="formReporte" novalidate>
+      <label>Tipo de incidencia
+        <select id="fTipo" required>
+          <option value="">Selecciona…</option>
+          <option>Bache o pista deteriorada</option>
+          <option>Semáforo malogrado</option>
+          <option>Vereda o sarda rota</option>
+          <option>Acumulación de desmonte</option>
+          <option>Señalización faltante por obra</option>
+        </select>
+      </label>
+      <label>Zona o avenida
+        <select id="fUbic" required>
+          <option value="">Selecciona…</option>
+          <option>Av. América</option><option>Av. España</option><option>Av. Mansiche</option>
+          <option>Jr. Pizarro</option><option>Plaza de Armas</option><option>Av. Juan Pablo II</option>
+        </select>
+      </label>
+      <label>Describe el problema
+        <textarea id="fDesc" placeholder="Ej.: bache grande frente al paradero, dificulta el giro de los buses…" required></textarea>
+      </label>
+      <button class="btn btn-primary btn-block" type="submit"><svg class="ic"><use href="#ic-flag"/></svg>Enviar reporte ciudadano</button>
+      <span class="form-note"><svg class="ic"><use href="#ic-clip"/></svg>Tu reporte se publicará como marcador morado en el mapa interactivo.</span>
+    </form>
+  </div>
+</section>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="container">
+    <div class="ft-grid">
+      <div>
+        <div class="ft-brand"><svg viewBox="0 0 64 64"><use href="#lg-pin"/></svg><strong>TRUJILLO<br>CONECTA</strong></div>
+        <p>Tu ciudad, en tus manos. Una sola plataforma para paraderos, tráfico, obras públicas y reportes con fiscalización ciudadana.</p>
+      </div>
+      <div>
+        <h4>Secciones</h4>
+        <ul class="ft-links">
+          <li><a href="#mapa">Mapa interactivo</a></li>
+          <li><a href="#obras">Obras públicas</a></li>
+          <li><a href="#caracteristicas">Funciones</a></li>
+          <li><a href="#reportes">Reportes</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contacto</h4>
+        <ul class="ft-links">
+          <li><a href="#reportes">Mesa de partes virtual</a></li>
+          <li><a href="#inicio">Av. España 1015, Trujillo</a></li>
+          <li><a href="#inicio">hola@trujilloconecta.pe</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ft-bottom">
+      <span>© 2025 Trujillo Conecta · Hecho con ❤️ en La Libertad</span>
+      <span>Datos del mapa: © OpenStreetMap · CARTO</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ BOTTOM NAV MÓVIL ============ -->
+<nav class="bottomnav" aria-label="Navegación inferior">
+  <button class="bn-item active" data-nav="inicio" type="button"><svg class="ic"><use href="#ic-home"/></svg>Inicio</button>
+  <button class="bn-item" data-nav="mapa" type="button"><svg class="ic"><use href="#ic-map"/></svg>Mapa</button>
+  <button class="bn-item" data-nav="notificaciones" type="button"><svg class="ic"><use href="#ic-bell"/></svg>Notificaciones</button>
+  <button class="bn-item" data-nav="perfil" type="button"><svg class="ic"><use href="#ic-user"/></svg>Perfil</button>
+</nav>
+
+<!-- ============ MODAL OBRA ============ -->
+<div class="overlay" id="ovObra" role="dialog" aria-modal="true" aria-label="Detalle de obra">
+  <div class="modal">
+    <div class="m-hero"><img id="mImg" src="" alt="Foto principal de la obra"><button class="m-close" id="mClose" aria-label="Cerrar"><svg class="ic"><use href="#ic-x"/></svg></button></div>
+    <div class="m-body">
+      <span class="badge-estado" id="mBadge"><span class="dot"></span>En ejecución</span>
+      <h3 id="mTitulo">—</h3>
+      <div class="fila"><span class="fic"><svg class="ic"><use href="#ic-pin"/></svg></span><div><b>Ubicación</b><p id="mUbic">—</p></div></div>
+      <div class="fila"><span class="fic"><svg class="ic"><use href="#ic-cal"/></svg></span><div><b>Inicio – Término previsto</b><p id="mFechas">—</p></div></div>
+      <div class="fila"><span class="fic f-verde"><svg class="ic"><use href="#ic-trend"/></svg></span><div style="flex:1"><b>Estado de avance</b><div class="av-flex"><div class="bar"><div class="fill" id="mFill"></div></div><span class="pct" id="mPct">0%</span></div></div></div>
+      <div class="fila"><span class="fic"><svg class="ic"><use href="#ic-clock"/></svg></span><div><b>Tiempo estimado de ejecución</b><p id="mTiempo">—</p></div></div>
+      <div class="fila"><span class="fic f-naranja"><svg class="ic"><use href="#ic-route"/></svg></span><div><b>Ruta alternativa habilitada</b><p id="mRuta">—</p></div></div>
+      <div class="m-gal"><h4>Evidencia fotográfica del avance</h4><div class="thumbs" id="mGal"></div></div>
+      <button class="btn btn-primary btn-block js-vermapa" id="mVerMapa" type="button"><svg class="ic"><use href="#ic-map"/></svg>Ver en el mapa</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL PERFIL ============ -->
+<div class="overlay" id="ovPerfil" role="dialog" aria-modal="true" aria-label="Mi perfil">
+  <div class="modal">
+    <div class="perfil-head">
+      <span class="avatar">IT</span>
+      <b>Invitado Trujillano</b>
+      <span>Explorador urbano · Trujillo, La Libertad</span>
+    </div>
+    <div class="perfil-stats">
+      <div><b>3</b><small>Reportes enviados</small></div>
+      <div><b>2</b><small>Obras seguidas</small></div>
+      <div><b>12</b><small>Paraderos fav.</small></div>
+    </div>
+    <div class="m-body" style="padding-top:0">
+      <button class="btn btn-primary btn-block" id="pClose" type="button">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LIGHTBOX ============ -->
+<div class="overlay" id="ovLight" role="dialog" aria-modal="true" aria-label="Galería fotográfica">
+  <button class="lb-btn lb-close" id="lbClose" aria-label="Cerrar galería"><svg class="ic"><use href="#ic-x"/></svg></button>
+  <button class="lb-btn" id="lbPrev" aria-label="Foto anterior"><svg class="ic"><use href="#ic-chevL"/></svg></button>
+  <figure><img id="lbImg" src="" alt="Evidencia fotográfica de la obra"><figcaption id="lbCap"></figcaption></figure>
+  <button class="lb-btn" id="lbNext" aria-label="Foto siguiente"><svg class="ic"><use href="#ic-chevR"/></svg></button>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ============ ILUSTRACIONES SVG (evidencia de obra) ============ */
+function svgDoc(inner){return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420">'+inner+'</svg>';}
+function svgUri(s){return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s);}
+var DEFS='<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe3ff"/><stop offset="1" stop-color="#eef8ff"/></linearGradient></defs>';
+function cloud(x,y,s){return '<g transform="translate('+x+' '+y+') scale('+s+')" fill="#fff" opacity=".92"><ellipse cx="0" cy="0" rx="36" ry="14"/><ellipse cx="-24" cy="6" rx="22" ry="11"/><ellipse cx="24" cy="6" rx="24" ry="11"/></g>';}
+function bld(x,y,w,h,c){var win='',r,q;for(r=0;r<Math.floor((h-18)/26);r++){for(q=0;q<Math.floor((w-14)/22);q++){win+='<rect x="'+(x+9+q*22)+'" y="'+(y+9+r*26)+'" width="12" height="14" fill="rgba(255,255,255,.55)"/>';}}return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+c+'"/>'+win;}
+function cone(x,y,s){return '<g transform="translate('+x+' '+y+') scale('+s+')"><rect x="-14" y="-5" width="28" height="7" rx="3" fill="#c94f00"/><path d="M0-40L13-3H-13Z" fill="#f28c00"/><rect x="-8" y="-26" width="16" height="7" fill="#fff"/></g>';}
+function worker(x,y,s){return '<g transform="translate('+x+' '+y+') scale('+s+')"><circle cx="0" cy="-47" r="7" fill="#f2c09a"/><path d="M-8-49a8 8 0 0 1 16 0v2.5h-16z" fill="#ffb703"/><rect x="-7.5" y="-41" width="15" height="21" rx="5" fill="#f28c00"/><rect x="-7.5" y="-33" width="15" height="3.4" fill="#ffe08a"/><rect x="-6.5" y="-20" width="5.4" height="20" rx="2.6" fill="#274156"/><rect x="1.1" y="-20" width="5.4" height="20" rx="2.6" fill="#274156"/></g>';}
+function excavator(x,y,s){return '<g transform="translate('+x+' '+y+') scale('+s+')"><rect x="-48" y="-16" width="96" height="17" rx="8.5" fill="#37474f"/><circle cx="-31" cy="-7.5" r="6" fill="#546e7a"/><circle cx="0" cy="-7.5" r="6" fill="#546e7a"/><circle cx="31" cy="-7.5" r="6" fill="#546e7a"/><rect x="-42" y="-42" width="54" height="27" rx="6" fill="#f9a825"/><rect x="-36" y="-61" width="27" height="23" rx="4" fill="#fbc02d"/><rect x="-31" y="-56" width="15" height="13" rx="2" fill="#b3e5fc"/><path d="M12-38L50-68L58-59L25-31Z" fill="#f9a825"/><path d="M50-68L67-42L58-36L43-60Z" fill="#f9a825"/><path d="M62-38q15 2 13 17l-15-2z" fill="#546e7a"/></g>';}
+function roller(x,y,s){return '<g transform="translate('+x+' '+y+') scale('+s+')"><circle cx="-26" cy="-15" r="17" fill="#90a4ae"/><circle cx="-26" cy="-15" r="7" fill="#cfd8dc"/><rect x="-12" y="-42" width="48" height="26" rx="7" fill="#f9a825"/><rect x="-2" y="-60" width="26" height="20" rx="4" fill="#fbc02d"/><rect x="2" y="-55" width="14" height="11" rx="2" fill="#b3e5fc"/><circle cx="28" cy="-11" r="11" fill="#37474f"/></g>';}
+function tree(x,y,s){return '<g transform="translate('+x+' '+y+') scale('+s+')"><rect x="-4" y="-26" width="8" height="26" fill="#795548"/><circle cx="0" cy="-40" r="20" fill="#66bb6a"/><circle cx="-15" cy="-30" r="13" fill="#4caf50"/><circle cx="15" cy="-30" r="13" fill="#4caf50"/></g>';}
+function signDesvio(x,y,s){return '<g transform="translate('+x+' '+y+') scale('+s+')"><rect x="-2.5" y="-72" width="5" height="72" fill="#78909c"/><path d="M0-106L29-77L0-48L-29-77Z" fill="#ffd23f" stroke="#212121" stroke-width="3"/><path d="M0-66v-20m0 0l-7 7m7-7l7 7" stroke="#212121" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>';}
+function base(sky2,roadY){return DEFS+'<rect width="800" height="420" fill="url(#g)"/><circle cx="700" cy="66" r="32" fill="#fff3b0"/>'+cloud(150,72,1)+cloud(470,50,.8)+'<rect y="'+(roadY-10)+'" width="800" height="12" fill="#cfd8dc"/><rect y="'+roadY+'" width="800" height="'+(420-roadY)+'" fill="#9aa7b0"/>';}
+
+var escenaHeader = svgDoc(base('#bfe3ff',262)+bld(16,150,120,112,'#d9c7b2')+bld(148,118,112,144,'#c9b6a4')+bld(636,140,148,122,'#e0d3c0')+bld(516,162,110,100,'#d9c7b2')+'<path d="M110 420L320 262h64L232 420z" fill="#6d4c41"/><path d="M146 420L332 270h24L206 420z" fill="#4e342e">'+cone(300,404,1.25)+cone(356,362,1.08)+cone(404,328,.95)+cone(444,302,.84)+cone(478,282,.74)+excavator(560,344,1.15)+worker(252,400,1.2)+worker(652,362,1));
+var escenaG1 = svgDoc(base('#cdeaff',270)+bld(30,140,150,130,'#cbb8a6')+bld(600,150,170,120,'#d9c7b2')+'<path d="M0 420L250 300h210L590 420z" fill="#5d4037"/><rect x="290" y="362" width="200" height="20" rx="10" fill="#78909c"/><circle cx="330" cy="372" r="7" fill="#546e7a"/><circle cx="450" cy="372" r="7" fill="#546e7a"/>'+excavator(430,330,1.9)+worker(176,398,1.35)+cone(90,410,1.3)+cone(660,400,1.25)+cone(720,360,1.05));
+var escenaG2 = svgDoc(base('#d6ecff',268)+bld(20,150,130,118,'#d9c7b2')+bld(640,140,140,128,'#c9b6a4')+'<rect y="310" width="800" height="110" fill="#455a64"/><rect y="306" width="800" height="6" fill="#263238"/><circle cx="300" cy="300" r="16" fill="#fff" opacity=".5"/><circle cx="340" cy="286" r="12" fill="#fff" opacity=".4"/><circle cx="372" cy="276" r="9" fill="#fff" opacity=".3"/>'+roller(560,352,1.35)+worker(250,392,1.2)+worker(330,382,1.05)+'<rect x="258" y="330" width="5" height="52" rx="2.5" fill="#8d6e63" transform="rotate(16 260 356)"/>'+cone(120,404,1.2)+cone(700,392,1.15));
+var escenaG3 = svgDoc(base('#cfe8ff',266)+bld(40,150,120,116,'#cbb8a6')+bld(620,146,150,120,'#e0d3c0')+'<rect x="60" y="330" width="300" height="18" rx="5" fill="#fff"/><rect x="80" y="330" width="26" height="18" fill="#f28c00"/><rect x="132" y="330" width="26" height="18" fill="#f28c00"/><rect x="184" y="330" width="26" height="18" fill="#f28c00"/><rect x="236" y="330" width="26" height="18" fill="#f28c00"/><rect x="288" y="330" width="26" height="18" fill="#f28c00"/>'+cone(140,404,1.3)+cone(250,382,1.15)+cone(350,360,1)+cone(440,338,.9)+cone(510,318,.8)+signDesvio(640,352,1.25)+excavator(150,300,.7)+worker(480,392,1.1));
+var escenaG4 = svgDoc(base('#d6ecff',264)+bld(30,150,110,114,'#d9c7b2')+bld(660,150,120,114,'#c9b6a4')+'<rect y="300" width="800" height="20" fill="#8bc34a"/>'+tree(120,300,1)+tree(300,300,.9)+tree(680,300,1.05)+'<rect y="330" width="800" height="90" fill="#546e7a"/>'+roller(480,368,1.45)+worker(250,398,1.15)+cone(90,410,1.25)+cone(640,404,1.2)+cone(720,372,1));
+var escenaG5 = (function(){var adoq='',r,c;for(r=0;r<5;r++){for(c=0;c<15;c++){adoq+='<rect x="'+(8+c*54+(r%2?27:0))+'" y="'+(302+r*24)+'" width="46" height="16" rx="5" fill="'+((r+c)%2?'#b0bec5':'#cfd8dc')+'"/>';}}
+  var arch='',i;for(i=0;i<6;i++){arch+='<path d="M'+(40+i*128)+' 300v-84a42 42 0 0 1 84 0v84z" fill="#8d6e63"/><rect x="'+(58+i*128)+'" y="150" width="48" height="34" rx="4" fill="#5d4037"/>';}
+  return svgDoc(DEFS+'<rect width="800" height="420" fill="url(#g)"/><circle cx="90" cy="60" r="30" fill="#fff3b0"/>'+cloud(560,60,1)+'<rect y="112" width="800" height="188" fill="#f4e3c1"/><rect y="104" width="800" height="12" fill="#d7b98a"/>'+arch+'<rect y="296" width="800" height="10" fill="#b0bec5"/>'+adoq+worker(300,372,1.15)+worker(452,384,1.05)+'<circle cx="560" cy="382" r="12" fill="#90a4ae"/><circle cx="582" cy="388" r="10" fill="#b0bec5"/><circle cx="572" cy="370" r="9" fill="#cfd8dc"/><path d="M620 392l40-24 34 8-30 26z" fill="#f9a825"/><circle cx="652" cy="402" r="10" fill="#37474f"/><rect x="688" y="360" width="5" height="34" rx="2.5" fill="#795548"/>');})();
+
+var IMG = {header:svgUri(escenaHeader), g1:svgUri(escenaG1), g2:svgUri(escenaG2), g3:svgUri(escenaG3), g4:svgUri(escenaG4), g5:svgUri(escenaG5)};
+
+/* ============ DATOS ============ */
+var obrasData = [
+  {id:'av-america', nombre:'Mejoramiento de Av. América', estado:'En ejecución', ubicacion:'Av. América, Trujillo (desde Av. Larco hasta Av. Los Incas)', inicio:'01 abr 2025', fin:'30 oct 2025', avance:40, tiempo:'6 meses', rutaAlt:'Av. Mansiche – Av. El Golf', coords:[-8.1075,-79.0330], imgs:[IMG.header,IMG.g1,IMG.g2,IMG.g3]},
+  {id:'av-mansiche', nombre:'Rehabilitación de Av. Mansiche', estado:'En ejecución', ubicacion:'Av. Mansiche, desde óvalo Monserrate hasta Av. El Golf', inicio:'15 feb 2025', fin:'15 sep 2025', avance:65, tiempo:'7 meses', rutaAlt:'Av. El Golf – Calle Los Cedros', coords:[-8.1012,-79.0428], imgs:[IMG.g4,IMG.g2,IMG.g3]},
+  {id:'jr-pizarro', nombre:'Renovación de Jr. Pizarro', estado:'En ejecución', ubicacion:'Jr. Pizarro cdra. 3 a 6, Centro Histórico', inicio:'20 may 2025', fin:'20 dic 2025', avance:25, tiempo:'7 meses', rutaAlt:'Jr. Independencia – Jr. Orbegoso', coords:[-8.1105,-79.0270], imgs:[IMG.g5,IMG.g1,IMG.g3]}
+];
+var paraderosData = [
+  {nombre:'Paradero Plaza de Armas', coords:[-8.1116,-79.0288]},
+  {nombre:'Paradero Av. España', coords:[-8.1152,-79.0312]},
+  {nombre:'Paradero Mercado Mayorista', coords:[-8.1238,-79.0198]},
+  {nombre:'Paradero Terminal Terrestre', coords:[-8.1272,-79.0368]},
+  {nombre:'Paradero Monserrate', coords:[-8.1062,-79.0378]},
+  {nombre:'Paradero Av. Húsares de Junín', coords:[-8.1092,-79.0212]}
+];
+var viasData = [
+  {nombre:'Vía cerrada: Av. América (km 1.2)', coords:[-8.1068,-79.0336]},
+  {nombre:'Vía cerrada: Jr. Pizarro cdra. 4', coords:[-8.1112,-79.0276]}
+];
+var rutasPolys = {
+  principal:{color:'#1e6fd9',dash:null,weight:5,pts:[[-8.1002,-79.0402],[-8.1040,-79.0360],[-8.1075,-79.0330],[-8.1105,-79.0290],[-8.1140,-79.0262],[-8.1180,-79.0230],[-8.1238,-79.0198]]},
+  alternativa:{color:'#27a351',dash:'8 8',weight:4,pts:[[-8.0990,-79.0448],[-8.1012,-79.0428],[-8.1032,-79.0392],[-8.1062,-79.0352],[-8.1092,-79.0312],[-8.1120,-79.0286]]},
+  cerrada:{color:'#e03131',dash:null,weight:5,pts:[[-8.1052,-79.0352],[-8.1068,-79.0336],[-8.1085,-79.0318]]}
+};
+var lugaresExtra = [
+  {nombre:'Plaza de Armas de Trujillo', coords:[-8.1116,-79.0288]},
+  {nombre:'Universidad Nacional de Trujillo', coords:[-8.1179,-79.0402]},
+  {nombre:'Mercado Mayorista de Trujillo', coords:[-8.1240,-79.0200]},
+  {nombre:'Terminal Terrestre de Trujillo', coords:[-8.1274,-79.0370]}
+];
+var zonasReporte = {'Av. América':[-8.1075,-79.0330],'Av. España':[-8.1152,-79.0310],'Av. Mansiche':[-8.1010,-79.0430],'Jr. Pizarro':[-8.1105,-79.0270],'Plaza de Armas':[-8.1116,-79.0288],'Av. Juan Pablo II':[-8.1215,-79.0287]};
+var notificaciones = [
+  {ic:'ic-helmet',color:'bg-naranja',t:'Obra Av. América',d:'El avance llegó al 40%: se inició el vaciado del carril norte.',h:'Hace 2 h'},
+  {ic:'ic-bus',color:'bg-azul',t:'Nuevo paradero oficial',d:'Paradero Monserrate habilitado en la ruta R12.',h:'Hace 5 h'},
+  {ic:'ic-clip',color:'bg-verde',t:'Reporte atendido',d:'Tu reporte #128 (bache en Av. España) fue resuelto.',h:'Ayer'}
+];
+
+/* ============ UTILIDADES UI ============ */
+var toastEl = document.getElementById('toast'), toastTimer = null;
+function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function(){toastEl.classList.remove('show');},2800); }
+function lockScroll(on){ document.body.classList.toggle('no-scroll', on); }
+function abrirOverlay(el){ el.classList.add('open'); lockScroll(true); }
+function cerrarOverlay(el){ el.classList.remove('open'); if(!document.querySelector('.overlay.open')) lockScroll(false); }
+
+/* ============ MAPA PRINCIPAL ============ */
+var mapaPrincipal = null, capaGrupos = {}, obraMarkers = {}, buscablesLista = [];
+var tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+var tileAttr = '&copy; OpenStreetMap contributors &copy; CARTO';
+
+function iconoMarcador(sym, cls){
+  return L.divIcon({className:'tc-mk', html:'<span class="mk '+cls+'"><svg class="svgmk" viewBox="0 0 24 24"><use href="#'+sym+'"/></svg></span>', iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-18]});
+}
+function initMapa(){
+  if(!window.L){ document.getElementById('map').innerHTML = '<div class="map-fallback">El mapa necesita conexión a internet para cargar las capas.<br>El resto de la plataforma sigue funcionando.</div>'; return; }
+  mapaPrincipal = L.map('map',{zoomControl:true, scrollWheelZoom:false}).setView([-8.1116,-79.0288],14);
+  L.tileLayer(tileUrl,{attribution:tileAttr, maxZoom:20}).addTo(mapaPrincipal);
+  capaGrupos = {paraderos:L.layerGroup(), obras:L.layerGroup(), vias:L.layerGroup(), rutas:L.layerGroup(), reportes:L.layerGroup()};
+  Object.keys(capaGrupos).forEach(function(k){ capaGrupos[k].addTo(mapaPrincipal); });
+
+  // rutas (polilíneas)
+  Object.keys(rutasPolys).forEach(function(k){
+    var r = rutasPolys[k];
+    L.polyline(r.pts,{color:r.color, weight:r.weight, dashArray:r.dash, opacity:.92, lineCap:'round'}).addTo(capaGrupos.rutas);
+  });
+  rutasPolys.principal.pts.forEach(function(p,i){ if(i%2===1){ L.circleMarker(p,{radius:4.5,color:'#1e6fd9',weight:2.5,fillColor:'#fff',fillOpacity:1}).addTo(capaGrupos.rutas); } });
+
+  // paraderos
+  paraderosData.forEach(function(p){
+    var mk = L.marker(p.coords,{icon:iconoMarcador('ic-bus','mk-blue'), title:p.nombre})
+      .bindPopup('<div class="pop"><b>'+p.nombre+'</b><span class="pop-sub">Paradero oficial · Trujillo Conecta</span></div>')
+      .addTo(capaGrupos.paraderos);
+    p.marker = mk;
+  });
+  // obras
+  obrasData.forEach(function(o){
+    var mk = L.marker(o.coords,{icon:iconoMarcador('ic-helmet','mk-orange'), title:o.nombre})
+      .bindPopup('<div class="pop"><b>'+o.nombre+'</b><span class="pop-sub">'+o.estado+' · avance '+o.avance+'%</span><button class="btn-mini js-detalle" data-id="'+o.id+'" type="button">Ver detalles</button></div>')
+      .addTo(capaGrupos.obras);
+    o.marker = mk; obraMarkers[o.id] = mk;
+  });
+  // vías cerradas
+  viasData.forEach(function(v){
+    var mk = L.marker(v.coords,{icon:iconoMarcador('ic-warn','mk-red'), title:v.nombre})
+      .bindPopup('<div class="pop"><b>'+v.nombre+'</b><span class="pop-sub">Vía cerrada por obra · usa la ruta alternativa</span></div>')
+      .addTo(capaGrupos.vias);
+    v.marker = mk;
+  });
+
+  // leyenda interactiva
+  var ley = L.control({position:'bottomleft'});
+  ley.onAdd = function(){
+    var div = L.DomUtil.create('div','leyenda');
+    div.innerHTML = '<div class="ley-title" id="leyToggle">Capas del mapa <svg class="ic"><use href="#ic-chevD"/></svg></div>'+
+      '<ul>'+
+      '<label><input type="checkbox" data-capa="paraderos" checked><span class="ley-ic bg-azul"><svg class="ic"><use href="#ic-bus"/></svg></span>Paraderos oficiales</label>'+
+      '<label><input type="checkbox" data-capa="obras" checked><span class="ley-ic bg-naranja"><svg class="ic"><use href="#ic-helmet"/></svg></span>Obras en ejecución</label>'+
+      '<label><input type="checkbox" data-capa="vias" checked><span class="ley-ic bg-rojo"><svg class="ic"><use href="#ic-warn"/></svg></span>Vías cerradas</label>'+
+      '<label><input type="checkbox" data-capa="rutas" checked><span class="ley-line"></span>Rutas alternativas</label>'+
+      '<label><input type="checkbox" data-capa="reportes" checked><span class="ley-ic bg-morado"><svg class="ic"><use href="#ic-flag"/></svg></span>Reportes vecinos</label>'+
+      '</ul>';
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    div.querySelector('#leyToggle').addEventListener('click',function(){ div.classList.toggle('closed'); });
+    div.querySelectorAll('input[data-capa]').forEach(function(cb){
+      cb.addEventListener('change',function(){ setCapa(cb.dataset.capa, cb.checked); });
+    });
+    return div;
+  };
+  ley.addTo(mapaPrincipal);
+
+  // lista de búsqueda
+  buscablesLista = []
+    .concat(paraderosData.map(function(p){ return {nombre:p.nombre, tipo:'Paradero', sym:'ic-bus', cls:'mk-blue', coords:p.coords, marker:p.marker, capa:'paraderos'}; }))
+    .concat(obrasData.map(function(o){ return {nombre:o.nombre, tipo:'Obra pública', sym:'ic-helmet', cls:'mk-orange', coords:o.coords, marker:o.marker, capa:'obras'}; }))
+    .concat(viasData.map(function(v){ return {nombre:v.nombre, tipo:'Vía cerrada', sym:'ic-warn', cls:'mk-red', coords:v.coords, marker:v.marker, capa:'vias'}; }))
+    .concat(lugaresExtra.map(function(l){ return {nombre:l.nombre, tipo:'Lugar', sym:'ic-pin', cls:'mk-green', coords:l.coords, marker:null, capa:null}; }));
+
+  // mini mapa del teléfono
+  var mini = L.map('miniMap',{zoomControl:false, attributionControl:false, dragging:true, scrollWheelZoom:false, doubleClickZoom:false, boxZoom:false, keyboard:false, touchZoom:false}).setView([-8.1098,-79.0318],13);
+  L.tileLayer(tileUrl,{attribution:tileAttr, maxZoom:20}).addTo(mini);
+  Object.keys(rutasPolys).forEach(function(k){ var r = rutasPolys[k]; L.polyline(r.pts,{color:r.color, weight:r.dash?3:3.5, dashArray:r.dash, interactive:false}).addTo(mini); });
+  [paraderosData[0],paraderosData[1],paraderosData[4]].forEach(function(p){ L.marker(p.coords,{icon:iconoMarcador('ic-bus','mk-blue'), interactive:false}).addTo(mini); });
+  L.marker(obrasData[0].coords,{icon:iconoMarcador('ic-helmet','mk-orange'), interactive:false}).addTo(mini);
+  L.marker(viasData[0].coords,{icon:iconoMarcador('ic-warn','mk-red'), interactive:false}).addTo(mini);
+}
+function setCapa(nombre, on){
+  if(!mapaPrincipal) return;
+  if(on){ mapaPrincipal.addLayer(capaGrupos[nombre]); } else { mapaPrincipal.removeLayer(capaGrupos[nombre]); }
+}
+function activarCapaDe(nombre){
+  var cb = document.querySelector('.leyenda input[data-capa="'+nombre+'"]');
+  if(cb && !cb.checked){ cb.checked = true; setCapa(nombre,true); }
+}
+function irAMarcador(item){
+  if(!mapaPrincipal){ toast('📍 El mapa no está disponible sin conexión'); return; }
+  document.getElementById('mapa').scrollIntoView({behavior:'smooth', block:'start'});
+  setTimeout(function(){
+    if(item.capa) activarCapaDe(item.capa);
+    mapaPrincipal.flyTo(item.coords, 16, {duration:1.1});
+    mapaPrincipal.once('moveend', function(){
+      if(item.marker){ item.marker.openPopup(); }
+      else { L.popup({closeButton:false}).setLatLng(item.coords).setContent('<div class="pop"><b>'+item.nombre+'</b><span class="pop-sub">'+item.tipo+'</span></div>').openOn(mapaPrincipal); }
+    });
+  }, 320);
+}
+
+/* ============ BÚSQUEDA ============ */
+var inputBuscar = document.getElementById('buscar'), cajaSug = document.getElementById('sugerencias'), resultadosActuales = [];
+function pintarSugerencias(q){
+  var txt = q.trim().toLowerCase();
+  if(txt.length < 2){ cajaSug.classList.remove('open'); cajaSug.innerHTML=''; return; }
+  resultadosActuales = buscablesLista.filter(function(b){ return b.nombre.toLowerCase().indexOf(txt) !== -1; }).slice(0,7);
+  if(!resultadosActuales.length){ cajaSug.classList.remove('open'); cajaSug.innerHTML=''; return; }
+  cajaSug.innerHTML = resultadosActuales.map(function(b,i){
+    return '<button class="sug-item" type="button" data-i="'+i+'"><span class="sug-ic '+b.cls.replace('mk-','bg-')+'"><svg class="ic"><use href="#'+b.sym+'"/></svg></span><span><strong>'+b.nombre+'</strong><small>'+b.tipo+'</small></span></button>';
+  }).join('');
+  cajaSug.classList.add('open');
+}
+inputBuscar.addEventListener('input', function(){ pintarSugerencias(inputBuscar.value); });
+inputBuscar.addEventListener('focus', function(){ pintarSugerencias(inputBuscar.value); });
+cajaSug.addEventListener('click', function(e){
+  var btn = e.target.closest('.sug-item'); if(!btn) return;
+  var item = resultadosActuales[+btn.dataset.i];
+  inputBuscar.value = item.nombre; cajaSug.classList.remove('open');
+  irAMarcador(item);
+});
+document.addEventListener('click', function(e){ if(!e.target.closest('.search-row')) cajaSug.classList.remove('open'); });
+
+/* ============ TARJETAS DE OBRAS ============ */
+document.getElementById('gridObras').innerHTML = obrasData.map(function(o){
+  return '<article class="card-obra reveal">'+
+    '<div class="co-img"><img src="'+o.imgs[0]+'" alt="Obra: '+o.nombre+'"><span class="badge-estado"><span class="dot"></span>'+o.estado+'</span></div>'+
+    '<div class="co-body"><h3>'+o.nombre+'</h3>'+
+    '<p class="co-ub"><svg class="ic"><use href="#ic-pin"/></svg>'+o.ubicacion+'</p>'+
+    '<div class="av-flex"><div class="bar"><div class="fill" data-avance="'+o.avance+'"></div></div><span class="pct">'+o.avance+'%</span></div>'+
+    '<p class="co-fechas"><svg class="ic"><use href="#ic-cal"/></svg>'+o.inicio+' – '+o.fin+'</p>'+
+    '<div class="co-btns"><button class="btn btn-primary btn-sm js-detalle" data-id="'+o.id+'" type="button">Ver detalles</button>'+
+    '<button class="btn btn-ghost btn-sm js-vermapa" data-id="'+o.id+'" type="button">Ver en mapa</button></div></div></article>';
+}).join('');
+
+/* ============ MODAL OBRA ============ */
+var ovObra = document.getElementById('ovObra'), obraActual = null;
+function openObra(id){
+  var o = obrasData.find(function(x){ return x.id === id; }); if(!o) return;
+  obraActual = o;
+  document.getElementById('mImg').src = o.imgs[0];
+  document.getElementById('mImg').alt = 'Foto principal: '+o.nombre;
+  document.getElementById('mBadge').innerHTML = '<span class="dot"></span>'+o.estado;
+  document.getElementById('mTitulo').textContent = o.nombre;
+  document.getElementById('mUbic').textContent = o.ubicacion;
+  document.getElementById('mFechas').textContent = o.inicio+' – '+o.fin;
+  document.getElementById('mTiempo').textContent = o.tiempo;
+  document.getElementById('mRuta').textContent = o.rutaAlt;
+  document.getElementById('mPct').textContent = o.avance+'%';
+  var fill = document.getElementById('mFill'); fill.style.width = '0%';
+  document.getElementById('mGal').innerHTML = o.imgs.map(function(src,i){
+    return '<img class="thumb js-thumb" data-id="'+o.id+'" data-i="'+i+'" src="'+src+'" alt="Foto '+(i+1)+' de '+o.nombre+'" tabindex="0">';
+  }).join('');
+  document.getElementById('mVerMapa').dataset.id = o.id;
+  abrirOverlay(ovObra);
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ fill.style.width = o.avance+'%'; }); });
+}
+function verEnMapa(id){
+  var o = obrasData.find(function(x){ return x.id === id; }); if(!o) return;
+  document.querySelectorAll('.overlay.open').forEach(cerrarOverlay);
+  irAMarcador({coords:o.coords, marker:o.marker, capa:'obras', nombre:o.nombre, tipo:'Obra pública'});
+  toast('📍 Mostrando "'+o.nombre+'" en el mapa');
+}
+document.getElementById('mClose').addEventListener('click', function(){ cerrarOverlay(ovObra); });
+ovObra.addEventListener('click', function(e){ if(e.target === ovObra) cerrarOverlay(ovObra); });
+
+/* ============ LIGHTBOX ============ */
+var ovLight = document.getElementById('ovLight'), lbImgs = [], lbIdx = 0, lbNombre = '';
+function openLight(id, i){
+  var o = obrasData.find(function(x){ return x.id === id; }); if(!o) return;
+  lbImgs = o.imgs; lbIdx = i; lbNombre = o.nombre; renderLight(); abrirOverlay(ovLight);
+}
+function renderLight(){
+  document.getElementById('lbImg').src = lbImgs[lbIdx];
+  document.getElementById('lbCap').textContent = 'Foto '+(lbIdx+1)+' de '+lbImgs.length+' · '+lbNombre;
+}
+document.getElementById('lbPrev').addEventListener('click', function(){ lbIdx = (lbIdx-1+lbImgs.length)%lbImgs.length; renderLight(); });
+document.getElementById('lbNext').addEventListener('click', function(){ lbIdx = (lbIdx+1)%lbImgs.length; renderLight(); });
+document.getElementById('lbClose').addEventListener('click', function(){ cerrarOverlay(ovLight); });
+ovLight.addEventListener('click', function(e){ if(e.target === ovLight) cerrarOverlay(ovLight); });
+
+/* ============ DELEGACIÓN GLOBAL ============ */
+document.addEventListener('click', function(e){
+  var d = e.target.closest('.js-detalle'); if(d){ openObra(d.dataset.id); return; }
+  var v = e.target.closest('.js-vermapa'); if(v){ verEnMapa(v.dataset.id); return; }
+  var t = e.target.closest('.js-thumb'); if(t){ openLight(t.dataset.id, +t.dataset.i); return; }
+});
+
+/* ============ NOTIFICACIONES ============ */
+var panelNot = document.getElementById('panelNot'), badgeNot = document.getElementById('badgeNot');
+document.getElementById('notList').innerHTML = notificaciones.map(function(n){
+  return '<div class="pn-item"><span class="pn-ic '+n.color+'"><svg class="ic"><use href="#'+n.ic+'"/></svg></span><div><b>'+n.t+'</b><p>'+n.d+'</p><small>'+n.h+'</small></div></div>';
+}).join('');
+function toggleNot(){ panelNot.classList.toggle('open'); }
+document.getElementById('btnNot').addEventListener('click', function(e){ e.stopPropagation(); toggleNot(); });
+document.getElementById('btnLeerNot').addEventListener('click', function(){
+  document.querySelectorAll('.pn-item').forEach(function(el){ el.classList.add('read'); });
+  badgeNot.style.display = 'none'; toast('✅ Notificaciones marcadas como leídas');
+});
+document.addEventListener('click', function(e){ if(!e.target.closest('#panelNot') && !e.target.closest('#btnNot') && !e.target.closest('[data-nav="notificaciones"]')) panelNot.classList.remove('open'); });
+
+/* ============ PERFIL ============ */
+var ovPerfil = document.getElementById('ovPerfil');
+document.getElementById('btnPerfilTop').addEventListener('click', function(){ abrirOverlay(ovPerfil); });
+document.getElementById('pClose').addEventListener('click', function(){ cerrarOverlay(ovPerfil); });
+ovPerfil.addEventListener('click', function(e){ if(e.target === ovPerfil) cerrarOverlay(ovPerfil); });
+
+/* ============ NAVEGACIÓN (bottom nav + phone nav) ============ */
+function setNavActivo(nombre){
+  document.querySelectorAll('.bottomnav [data-nav]').forEach(function(b){ b.classList.toggle('active', b.dataset.nav === nombre); });
+  document.querySelectorAll('.app-nav [data-nav]').forEach(function(b){ b.classList.toggle('active', b.dataset.nav === nombre); });
+}
+document.querySelectorAll('[data-nav]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var destino = btn.dataset.nav;
+    if(destino === 'notificaciones'){ toggleNot(); return; }
+    if(destino === 'perfil'){ abrirOverlay(ovPerfil); return; }
+    setNavActivo(destino);
+    document.getElementById(destino === 'inicio' ? 'inicio' : 'mapa').scrollIntoView({behavior:'smooth'});
+  });
+});
+document.getElementById('appSearchBtn').addEventListener('click', function(){
+  document.getElementById('mapa').scrollIntoView({behavior:'smooth'});
+  setTimeout(function(){ inputBuscar.focus(); }, 500);
+});
+
+/* menú hamburguesa */
+var mobileMenu = document.getElementById('mobileMenu');
+document.getElementById('btnMenu').addEventListener('click', function(){ mobileMenu.classList.toggle('open'); });
+mobileMenu.querySelectorAll('a').forEach(function(a){ a.addEventListener('click', function(){ mobileMenu.classList.remove('open'); }); });
+
+/* ============ REPORTES ============ */
+document.getElementById('formReporte').addEventListener('submit', function(e){
+  e.preventDefault();
+  var tipo = document.getElementById('fTipo').value;
+  var ubic = document.getElementById('fUbic').value;
+  var desc = document.getElementById('fDesc').value.trim();
+  if(!tipo || !ubic || !desc){ toast('⚠️ Completa el tipo, la zona y la descripción'); return; }
+  var base = zonasReporte[ubic];
+  var coords = [base[0] + (Math.random()-.5)*0.004, base[1] + (Math.random()-.5)*0.004];
+  if(mapaPrincipal){
+    activarCapaDe('reportes');
+    var mk = L.marker(coords,{icon:iconoMarcador('ic-flag','mk-purple'), title:'Reporte: '+tipo})
+      .bindPopup('<div class="pop"><b>Reporte: '+tipo+'</b><span class="pop-sub">'+ubic+'</span><span class="pop-sub">'+desc+'</span></div>')
+      .addTo(capaGrupos.reportes);
+    document.getElementById('mapa').scrollIntoView({behavior:'smooth'});
+    setTimeout(function(){
+      mapaPrincipal.flyTo(coords, 16, {duration:1.1});
+      mapaPrincipal.once('moveend', function(){ mk.openPopup(); });
+    }, 320);
+  }
+  e.target.reset();
+  toast('✅ Reporte enviado y geolocalizado en el mapa');
+});
+
+/* ============ ANIMACIONES (reveal, barras, contadores) ============ */
+var ioReveal = new IntersectionObserver(function(entries){
+  entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); ioReveal.unobserve(en.target); } });
+},{threshold:.14});
+document.querySelectorAll('.reveal').forEach(function(el){ ioReveal.observe(el); });
+
+var ioBar = new IntersectionObserver(function(entries){
+  entries.forEach(function(en){ if(en.isIntersecting){ en.target.style.width = en.target.dataset.avance+'%'; ioBar.unobserve(en.target); } });
+},{threshold:.4});
+document.querySelectorAll('.fill[data-avance]').forEach(function(el){ ioBar.observe(el); });
+
+var ioCount = new IntersectionObserver(function(entries){
+  entries.forEach(function(en){
+    if(!en.isIntersecting) return;
+    var el = en.target, meta = +el.dataset.count, suf = el.dataset.suffix || '', t0 = null;
+    function paso(ts){ if(!t0) t0 = ts; var p = Math.min((ts-t0)/1200,1); el.textContent = Math.round(meta*p)+suf; if(p<1) requestAnimationFrame(paso); }
+    requestAnimationFrame(paso);
+    ioCount.unobserve(el);
+  });
+},{threshold:.5});
+document.querySelectorAll('[data-count]').forEach(function(el){ ioCount.observe(el); });
+
+/* ============ TECLA ESC ============ */
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    document.querySelectorAll('.overlay.open').forEach(cerrarOverlay);
+    panelNot.classList.remove('open');
+    cajaSug.classList.remove('open');
+  }
+});
+
+/* ============ ARRANQUE ============ */
+initMapa();
+})();
+</script>
+</body>
+</html>
